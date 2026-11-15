@@ -1,0 +1,110 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
+import '../models/post.dart';
+import '../models/user.dart';
+import '../utils/logger.dart';
+
+class ApiService {
+  static ApiService? _instance;
+
+  final http.Client _client;
+  final String _baseUrl;
+
+  factory ApiService({http.Client? client, String? baseUrl}) {
+    return _instance ??= ApiService._internal(client: client, baseUrl: baseUrl);
+  }
+
+  ApiService._internal({http.Client? client, String? baseUrl})
+    : _client = client ?? http.Client(),
+      _baseUrl = baseUrl ?? AppConfig.baseUrl;
+
+  Future<List<User>> getUsers() async {
+    try {
+      _logRequest('GET', '/users');
+      final response = await _client
+          .get(Uri.parse('$_baseUrl/users'), headers: _buildHeaders())
+          .timeout(Duration(seconds: AppConfig.timeoutSeconds));
+      _logResponse(response.statusCode);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => User.fromJson(json)).toList();
+      } else {
+        throw Exception('Gagal memuat data. Status: ${response.statusCode}');
+      }
+    } on TimeoutException {
+      throw Exception('Request timeout. Periksa koneksi internet Anda.');
+    } on SocketException {
+      throw Exception('Tidak ada koneksi internet. Periksa jaringan Anda.');
+    } on FormatException {
+      throw Exception('Format data tidak valid.');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan: $e');
+    }
+  }
+
+  Future<User> getUserById(int id) async {
+    try {
+      _logRequest('GET', '/users/$id');
+      final response = await _client
+          .get(Uri.parse('$_baseUrl/users/$id'), headers: _buildHeaders())
+          .timeout(Duration(seconds: AppConfig.timeoutSeconds));
+      _logResponse(response.statusCode);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return User.fromJson(data);
+      } else {
+        throw Exception('Gagal memuat data. Status: ${response.statusCode}');
+      }
+    } on TimeoutException {
+      throw Exception('Request timeout. Periksa koneksi internet Anda.');
+    } on SocketException {
+      throw Exception('Tidak ada koneksi internet. Periksa jaringan Anda.');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan: $e');
+    }
+  }
+
+  Future<List<Post>> getPosts() async {
+    try {
+      _logRequest('GET', '/posts');
+      final response = await _client
+          .get(Uri.parse('$_baseUrl/posts'), headers: _buildHeaders())
+          .timeout(Duration(seconds: AppConfig.timeoutSeconds));
+      _logResponse(response.statusCode);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Post.fromJson(json)).toList();
+      } else {
+        throw Exception('Gagal memuat data. Status: ${response.statusCode}');
+      }
+    } on TimeoutException {
+      throw Exception('Request timeout. Periksa koneksi internet Anda.');
+    } on SocketException {
+      throw Exception('Tidak ada koneksi internet. Periksa jaringan Anda.');
+    } on FormatException {
+      throw Exception('Format data tidak valid.');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan: $e');
+    }
+  }
+
+  Map<String, String> _buildHeaders() {
+    return {'Content-Type': 'application/json', 'X-API-Key': AppConfig.apiKey};
+  }
+
+  void _logRequest(String method, String endpoint) {
+    Logger.debug('[$method] $endpoint', tag: 'ApiService');
+  }
+
+  void _logResponse(int statusCode) {
+    Logger.debug('Response status: $statusCode', tag: 'ApiService');
+  }
+
+  void dispose() {
+    _client.close();
+    _instance = null;
+  }
+}
